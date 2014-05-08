@@ -115,46 +115,58 @@ public class MessengerService extends Service {
 
 			try {
 				Log.d("TAG", "connecting to server");
-				s = new Socket("192.168.0.25", 1337);
+				//s = new Socket("192.168.1.10", 8080);
+				s = new Socket("149.125.21.160", 8090);
 				Log.d("TAG", "connected to server:: " + s.isConnected());
 
 				BufferedReader input = new BufferedReader(
 						new InputStreamReader(s.getInputStream()));
 				String line = "";
-
+				int count = 0;
 				while (keepMonitoring) {
 					line = input.readLine();
-					if (line.contains(":")) {
-						String[] rots = line.split(":")[0].split(",");
-						String[] vals = line.split(":")[1].split(",");
-						float[] inputPosition = { Float.parseFloat(vals[0]),
-								Float.parseFloat(vals[1]),
-								Float.parseFloat(vals[2]) };
-						float[] smoothVals = applyLPF(inputPosition,
-								positionOutput);
-
-						inputPosition = new float[] {
-								Float.parseFloat(rots[0]),
-								Float.parseFloat(rots[1]),
-								Float.parseFloat(rots[2]) };
-
-						float[] smoothRots = applyLPF(inputPosition,
-								rotationOutput);
-						float x = smoothVals[0];
-						float y = smoothVals[1];
-
-						if (y < 200) {
-							y = 200 - y;
-						} else {
-							y = y - 200;
+					++count;
+					if(count % 20 == 0) {
+						Log.v(MessengerService.class.getName(), line);
+					}
+//					if(keepMonitoring) {
+//						continue;
+//					}
+					try {
+						if (line.contains(":")) {
+							String[] rots = line.split(":")[1].split(",");
+							String[] vals = line.split(":")[2].split(",");
+							float[] inputPosition = { Float.parseFloat(vals[0]),
+									Float.parseFloat(vals[1]),
+									Float.parseFloat(vals[2]) };
+							float[] smoothVals = applyLPF(inputPosition,
+									positionOutput);
+	
+							inputPosition = new float[] {
+									Float.parseFloat(rots[0]),
+									Float.parseFloat(rots[1]),
+									Float.parseFloat(rots[2]) };
+	
+							float[] smoothRots = applyLPF(inputPosition,
+									rotationOutput);
+							float x = smoothVals[0];
+							float y = smoothVals[1];
+	
+							if (y < 200) {
+								y = 200 - y;
+							} else {
+								y = y - 200;
+							}
+	
+							float z = smoothVals[2];
+	
+							float[] obj = { x, y, z, smoothRots[0] };
+							mMessenger.send(Message
+									.obtain(null, MSG_SET_VALUE, obj));
+	
 						}
-
-						float z = smoothVals[2];
-
-						float[] obj = { x, y, z, smoothRots[0] };
-						mMessenger.send(Message
-								.obtain(null, MSG_SET_VALUE, obj));
-
+					} catch (NumberFormatException e) {
+						e.printStackTrace();
 					}
 
 				}
@@ -170,6 +182,8 @@ public class MessengerService extends Service {
 				try {
 					s.close();
 				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (NullPointerException e) {
 					e.printStackTrace();
 				}
 			}
